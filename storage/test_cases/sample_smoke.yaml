@@ -1,0 +1,13 @@
+name: sample_smoke
+description: Basic scaffold smoke case
+tags:
+  - smoke
+steps:
+  - action: Open Enrollment Application Manager
+    params:
+      target: home
+  - action: Validate Backend State via GraphQL
+    params:
+      query_name: member_status
+datasets:
+  - sample_dataset

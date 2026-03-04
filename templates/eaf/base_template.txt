@@ -1,0 +1,3 @@
+EAF_TEMPLATE
+member_id={member_id}
+scenario={scenario}

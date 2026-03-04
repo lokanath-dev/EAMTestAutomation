@@ -1,0 +1,13 @@
+environments:
+  DEV1:
+    base_ui_url: "https://dev1.example.local/eam"
+    graphql_endpoint: "https://dev1.example.local/graphql"
+  DEV2:
+    base_ui_url: "https://dev2.example.local/eam"
+    graphql_endpoint: "https://dev2.example.local/graphql"
+  UAT:
+    base_ui_url: "https://uat.example.local/eam"
+    graphql_endpoint: "https://uat.example.local/graphql"
+  TEST:
+    base_ui_url: "https://test.example.local/eam"
+    graphql_endpoint: "https://test.example.local/graphql"

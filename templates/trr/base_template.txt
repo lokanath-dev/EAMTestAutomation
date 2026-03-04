@@ -1,0 +1,3 @@
+TRR_TEMPLATE
+member_id={member_id}
+outcome={scenario}

@@ -1,0 +1,3 @@
+BQN_TEMPLATE
+member_id={member_id}
+plan_id={plan_id}

@@ -1,0 +1,5 @@
+name: sample_dataset
+fields:
+  member_id: "123456789"
+  scenario: "happy_path"
+  plan_id: "H1234"
