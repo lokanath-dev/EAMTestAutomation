@@ -3,11 +3,13 @@ description: Basic scaffold smoke case
 tags:
   - smoke
 steps:
-  - action: Open Enrollment Application Manager
-    params:
+  - step_name: Open EAM
+    action_name: Open Enrollment Application Manager
+    parameters:
       target: home
-  - action: Validate Backend State via GraphQL
-    params:
+  - step_name: Validate GraphQL
+    action_name: Validate Backend State via GraphQL
+    parameters:
       query_name: member_status
 datasets:
   - sample_dataset
