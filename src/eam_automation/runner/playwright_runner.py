@@ -26,9 +26,8 @@ def _log(result: dict, message: str) -> None:
 
 
 def wait_for_eam_ready(page, *, root: Path, timeout_ms: int = 60000) -> None:
-    """Wait until FACETS EAM dashboard header texts are visible in page or same iframe."""
-    header1_pattern = re.compile(r"TriZetto\s*Elements", re.IGNORECASE)
-    header2_pattern = re.compile(r"Enrollment\s*Administration\s*Manager", re.IGNORECASE)
+    """Wait until FACETS EAM dashboard header text is visible in page or any frame."""
+    header_pattern = re.compile(r"Enrollment\s*Administration\s*Manager", re.IGNORECASE)
 
     try:
         current_url = page.url
@@ -46,7 +45,7 @@ def wait_for_eam_ready(page, *, root: Path, timeout_ms: int = 60000) -> None:
     )
 
     deadline = time.monotonic() + (timeout_ms / 1000)
-    last_diag: tuple[str, int, int, bool, bool] = ("main", -1, -1, False, False)
+    last_diag: tuple[str, int, bool] = ("main", -1, False)
 
     while time.monotonic() < deadline:
         contexts = [("main", page)] + [
@@ -55,21 +54,16 @@ def wait_for_eam_ready(page, *, root: Path, timeout_ms: int = 60000) -> None:
 
         for ctx_name, ctx in contexts:
             try:
-                header1 = ctx.get_by_text(header1_pattern)
-                header2 = ctx.get_by_text(header2_pattern)
+                header = ctx.get_by_text(header_pattern)
+                count = header.count()
+                vis = header.first.is_visible() if count > 0 else False
 
-                count1 = header1.count()
-                count2 = header2.count()
-                vis1 = header1.first.is_visible() if count1 > 0 else False
-                vis2 = header2.first.is_visible() if count2 > 0 else False
+                last_diag = (ctx_name, count, vis)
 
-                last_diag = (ctx_name, count1, count2, vis1, vis2)
-
-                if vis1 and vis2:
+                if vis:
                     print(
                         "EAM readiness diagnostics (success): "
-                        f"context={ctx_name}, trizetto_count={count1}, "
-                        f"eam_header_count={count2}"
+                        f"context={ctx_name}, eam_header_count={count}"
                     )
                     return
             except Exception:
@@ -87,19 +81,26 @@ def wait_for_eam_ready(page, *, root: Path, timeout_ms: int = 60000) -> None:
     except Exception:
         fail_title = "<unavailable>"
 
-    ctx_name, count1, count2, vis1, vis2 = last_diag
+    ctx_name, count, vis = last_diag
     print(
         "EAM readiness diagnostics (timeout): "
         f"url={fail_url}, title={fail_title!r}, context={ctx_name}, "
-        f"trizetto_count={count1}, eam_header_count={count2}, "
-        f"trizetto_visible={vis1}, eam_header_visible={vis2}"
+        f"eam_header_count={count}, eam_header_visible={vis}"
     )
 
-    timeout_shot = root / "tmp" / "eam_ready_timeout.png"
-    timeout_shot.parent.mkdir(parents=True, exist_ok=True)
+    timeout_dir = root / "tmp"
+    timeout_dir.mkdir(parents=True, exist_ok=True)
+
+    timeout_shot = timeout_dir / "eam_ready_timeout.png"
     page.screenshot(path=str(timeout_shot), full_page=True)
+
+    timeout_dom = timeout_dir / "eam_ready_dom.html"
+    timeout_dom.write_text(page.content(), encoding="utf-8")
+
     print("EAM dashboard did not appear within 60 seconds")
-    raise TimeoutError("EAM dashboard not detected within 60 seconds")
+    raise TimeoutError(
+        "EAM dashboard not detected (Enrollment Administration Manager not visible) within 60 seconds"
+    )
 
 
 def execute_steps_in_order(
