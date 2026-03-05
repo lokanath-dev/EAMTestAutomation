@@ -105,7 +105,13 @@ def execute_steps_in_order(
     return True
 
 
-def run_test_case(root: Path, test_case_name: str, dataset_name: str, env_name: str | None = None) -> dict:
+def run_test_case(
+    root: Path,
+    test_case_name: str,
+    dataset_name: str,
+    env_name: str | None = None,
+    use_persistent_profile: bool = True,
+) -> dict:
     tc = load_test_case(root, test_case_name)
     ds = load_dataset(root, dataset_name)
 
@@ -113,6 +119,10 @@ def run_test_case(root: Path, test_case_name: str, dataset_name: str, env_name: 
         env_name = "DEV1"
     env_path = root / "config" / "environments.yaml"
     env = get_environment(env_path, env_name)
+
+    # Optional environment-level override, defaults to True.
+    if "use_persistent_profile" in env:
+        use_persistent_profile = bool(env["use_persistent_profile"])
 
     run_id = datetime.now().strftime("%Y%m%d%H%M%S")
     run_dir = root / ".tmp" / "runs" / run_id
@@ -139,11 +149,26 @@ def run_test_case(root: Path, test_case_name: str, dataset_name: str, env_name: 
     logs_path.write_text("", encoding="utf-8")
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(channel="chrome", headless=False, slow_mo=250)
-        context = browser.new_context()
-        page = context.new_page()
+        browser = None
+        profile_dir = root / "storage" / "chrome_profile"
+        profile_dir.mkdir(parents=True, exist_ok=True)
+
+        if use_persistent_profile:
+            _log(result, "Launching Chrome with persistent profile at storage/chrome_profile")
+            context = p.chromium.launch_persistent_context(
+                user_data_dir=str(profile_dir),
+                channel="chrome",
+                headless=False,
+                slow_mo=250,
+            )
+            page = context.pages[0] if context.pages else context.new_page()
+        else:
+            browser = p.chromium.launch(channel="chrome", headless=False, slow_mo=250)
+            context = browser.new_context()
+            page = context.new_page()
 
         shared_context = {
+            "browser_context": context,
             "page": page,
             "env": env,
             "repo_root": root,
@@ -173,7 +198,9 @@ def run_test_case(root: Path, test_case_name: str, dataset_name: str, env_name: 
             result["screenshot"] = str(screenshot_path)
         finally:
             context.tracing.stop(path=str(trace_path))
-            browser.close()
+            context.close()
+            if browser is not None:
+                browser.close()
 
     logs_path.write_text(json.dumps(result, indent=2), encoding="utf-8")
     (run_dir / "result.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
