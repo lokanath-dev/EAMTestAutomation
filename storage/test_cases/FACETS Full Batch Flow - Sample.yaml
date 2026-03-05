@@ -1,0 +1,90 @@
+name: FACETS Full Batch Flow - Sample
+description: Sample end-to-end FACETS EAM file processing flow covering EAF, BEQ, BQN, TRR, TRC, event-driven checks, and GraphQL validation.
+tags:
+  - sample
+  - facets
+  - batch
+steps:
+  - id: step_01_prepare_eaf_file
+    name: Prepare EAF File
+    action: prepare_eaf_file
+    params: {}
+    enabled: true
+    step_name: Prepare EAF File
+    action_name: prepare_eaf_file
+    parameters: {}
+
+  - id: step_02_import_eaf_file
+    name: Import EAF File
+    action: import_eaf_file
+    params: {}
+    enabled: true
+    step_name: Import EAF File
+    action_name: import_eaf_file
+    parameters: {}
+
+  - id: step_03_export_beq_file
+    name: Export BEQ File
+    action: export_beq_file
+    params: {}
+    enabled: true
+    step_name: Export BEQ File
+    action_name: export_beq_file
+    parameters: {}
+
+  - id: step_04_prepare_bqn_file
+    name: Prepare BQN File
+    action: prepare_bqn_file
+    params: {}
+    enabled: true
+    step_name: Prepare BQN File
+    action_name: prepare_bqn_file
+    parameters: {}
+
+  - id: step_05_export_trr_file
+    name: Export TRR File
+    action: export_trr_file
+    params: {}
+    enabled: true
+    step_name: Export TRR File
+    action_name: export_trr_file
+    parameters: {}
+
+  - id: step_06_build_trc_file
+    name: Build TRC File
+    action: build_trc_file
+    params: {}
+    enabled: true
+    step_name: Build TRC File
+    action_name: build_trc_file
+    parameters: {}
+
+  - id: step_07_import_trc_file
+    name: Import TRC File
+    action: import_trc_file
+    params: {}
+    enabled: true
+    step_name: Import TRC File
+    action_name: import_trc_file
+    parameters: {}
+
+  - id: step_08_check_event_driven_messages
+    name: Check Event Driven Messages
+    action: check_event_driven_messages
+    params: {}
+    enabled: true
+    step_name: Check Event Driven Messages
+    action_name: check_event_driven_messages
+    parameters: {}
+
+  - id: step_09_check_in_facets_enrollment_thru_graphql
+    name: Check in Facets Enrollment thru GraphQL
+    action: validate_enrollment_graphql
+    params: {}
+    enabled: true
+    step_name: Check in Facets Enrollment thru GraphQL
+    action_name: validate_enrollment_graphql
+    parameters: {}
+
+datasets:
+  - sample_dataset
