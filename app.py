@@ -1,6 +1,12 @@
 """Streamlit entrypoint for the EAM Test Automation Tool."""
 
+import sys
+import asyncio
 from pathlib import Path
+
+if sys.platform.startswith("win"):
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+
 import streamlit as st
 
 from src.eam_automation.config.loader import load_environments

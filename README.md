@@ -36,6 +36,9 @@ streamlit run app.py
 - `storage/test_cases`, `storage/datasets` - human-readable test assets
 - `tmp/screenshots`, `tmp/logs`, `tmp/traces` - ephemeral artifacts
 
+## Troubleshooting
+- Windows Playwright NotImplementedError: ensure Proactor event loop policy is used.
+
 ## Notes
 - Execution model: one test case + one dataset at a time, sequentially.
 - No production usage.

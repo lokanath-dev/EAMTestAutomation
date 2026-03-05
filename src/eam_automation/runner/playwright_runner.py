@@ -5,6 +5,11 @@ from __future__ import annotations
 from pathlib import Path
 from datetime import datetime
 import json
+import sys
+import asyncio
+
+if sys.platform.startswith("win"):
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
 from playwright.sync_api import sync_playwright
 
