@@ -21,8 +21,10 @@ def render_test_runner(repo_root: Path) -> None:
     tc_name = st.selectbox("Test Case", test_cases)
     ds_name = st.selectbox("Dataset", datasets)
 
+    env_name = st.session_state.get("selected_env")
+
     if st.button("Run"):
-        result = run_test_case(repo_root, tc_name, ds_name)
+        result = run_test_case(repo_root, tc_name, ds_name, env_name=env_name)
         st.json(result)
         st.session_state["last_result"] = result
 

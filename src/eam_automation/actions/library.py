@@ -12,14 +12,38 @@ class ActionDefinition:
 
 
 def _not_implemented(**kwargs: Any) -> dict:
-    return {"status": "TODO", "details": kwargs}
+    raise NotImplementedError("Action handler not implemented yet.")
+
+
+def open_eam(**kwargs: Any) -> dict:
+    """Open the EAM UI using the configured environment base URL."""
+    context = kwargs.get("context") or {}
+    page = kwargs.get("page") or context.get("page")
+    env = context.get("env") or {}
+
+    if page is None:
+        raise ValueError("Playwright page is missing from execution context.")
+
+    url = env.get("base_url") or env.get("base_ui_url")
+    if not url:
+        raise ValueError("Environment base URL is missing. Expected 'base_url' or 'base_ui_url'.")
+
+    page.goto(url, wait_until="domcontentloaded")
+    page.wait_for_load_state("networkidle")
+
+    return {"status": "success", "message": "EAM opened", "url": url}
 
 
 ACTION_REGISTRY: dict[str, ActionDefinition] = {
+    "open_eam": ActionDefinition(
+        name="open_eam",
+        description="Open the EAM application URL in browser.",
+        handler=open_eam,
+    ),
     "Open Enrollment Application Manager": ActionDefinition(
         name="Open Enrollment Application Manager",
         description="Open the EAM application URL in browser.",
-        handler=_not_implemented,
+        handler=open_eam,
     ),
     "Generate Enrollment Application File": ActionDefinition(
         name="Generate Enrollment Application File",
@@ -49,6 +73,11 @@ ACTION_REGISTRY: dict[str, ActionDefinition] = {
     "Upload TRR File": ActionDefinition(
         name="Upload TRR File",
         description="Upload generated TRR via UI.",
+        handler=_not_implemented,
+    ),
+    "validate_graphql": ActionDefinition(
+        name="validate_graphql",
+        description="Execute GraphQL validation query.",
         handler=_not_implemented,
     ),
     "Validate Backend State via GraphQL": ActionDefinition(

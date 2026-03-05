@@ -15,6 +15,7 @@ from playwright.sync_api import sync_playwright
 
 from src.eam_automation.actions.library import ACTION_REGISTRY
 from src.eam_automation.storage.yaml_store import load_dataset, load_test_case
+from src.eam_automation.config.loader import get_environment
 
 
 def execute_steps_in_order(
@@ -44,7 +45,14 @@ def execute_steps_in_order(
         }
 
         try:
+            if action_name not in ACTION_REGISTRY:
+                raise ValueError(f"Unknown step action: {action_name}")
+
             action = ACTION_REGISTRY[action_name]
+            message = f"Running step {idx}: {action_name}"
+            result.setdefault("logs_text", []).append(message)
+            print(message)
+
             # Generic kwargs payload keeps handlers easy to evolve.
             action.handler(
                 page=page,
@@ -53,6 +61,10 @@ def execute_steps_in_order(
                 run_dir=run_dir,
                 context=shared_context,
             )
+
+            success_message = f"Step completed successfully: {action_name}"
+            result.setdefault("logs_text", []).append(success_message)
+            print(success_message)
         except Exception as exc:
             step_result["status"] = "FAIL"
             step_result["error"] = str(exc)
@@ -64,9 +76,14 @@ def execute_steps_in_order(
     return True
 
 
-def run_test_case(root: Path, test_case_name: str, dataset_name: str) -> dict:
+def run_test_case(root: Path, test_case_name: str, dataset_name: str, env_name: str | None = None) -> dict:
     tc = load_test_case(root, test_case_name)
     ds = load_dataset(root, dataset_name)
+
+    if not env_name:
+        env_name = "DEV1"
+    env_path = root / "config" / "environments.yaml"
+    env = get_environment(env_path, env_name)
 
     run_id = datetime.now().strftime("%Y%m%d%H%M%S")
     run_dir = root / ".tmp" / "runs" / run_id
@@ -81,19 +98,23 @@ def run_test_case(root: Path, test_case_name: str, dataset_name: str) -> dict:
         "run_dir": str(run_dir),
         "test_case": test_case_name,
         "dataset": dataset_name,
+        "environment": env_name,
         "status": "PASS",
         "steps": [],
         "logs": str(logs_path),
         "trace": str(trace_path),
         "screenshot": None,
+        "logs_text": [],
     }
 
     logs_path.write_text("", encoding="utf-8")
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
+        browser = p.chromium.launch(channel="chrome", headless=False, slow_mo=250)
         context = browser.new_context()
         page = context.new_page()
+
+        shared_context = {"page": page, "env": env}
 
         context.tracing.start(screenshots=True, snapshots=True, sources=True)
 
@@ -103,7 +124,7 @@ def run_test_case(root: Path, test_case_name: str, dataset_name: str) -> dict:
                 page=page,
                 dataset=ds,
                 run_dir=run_dir,
-                shared_context={},
+                shared_context=shared_context,
                 result=result,
             )
             if not ok:
