@@ -30,9 +30,61 @@ def wait_for_eam_ready(page, *, root: Path, timeout_ms: int = 60000) -> None:
     header2 = page.get_by_text("Enrollment Administration Manager")
 
     try:
+        current_url = page.url
+    except Exception:
+        current_url = "<unavailable>"
+
+    try:
+        current_title = page.title()
+    except Exception:
+        current_title = "<unavailable>"
+
+    try:
+        header1_count = header1.count()
+    except Exception:
+        header1_count = -1
+
+    try:
+        header2_count = header2.count()
+    except Exception:
+        header2_count = -1
+
+    print(
+        "EAM readiness diagnostics (before wait): "
+        f"url={current_url}, title={current_title!r}, "
+        f"trizetto_count={header1_count}, eam_header_count={header2_count}"
+    )
+
+    try:
         header1.wait_for(state="visible", timeout=timeout_ms)
         header2.wait_for(state="visible", timeout=timeout_ms)
     except PlaywrightTimeoutError as exc:
+        try:
+            fail_url = page.url
+        except Exception:
+            fail_url = "<unavailable>"
+
+        try:
+            fail_title = page.title()
+        except Exception:
+            fail_title = "<unavailable>"
+
+        try:
+            fail_header1_count = header1.count()
+        except Exception:
+            fail_header1_count = -1
+
+        try:
+            fail_header2_count = header2.count()
+        except Exception:
+            fail_header2_count = -1
+
+        print(
+            "EAM readiness diagnostics (timeout): "
+            f"url={fail_url}, title={fail_title!r}, "
+            f"trizetto_count={fail_header1_count}, eam_header_count={fail_header2_count}"
+        )
+
         timeout_shot = root / "tmp" / "eam_ready_timeout.png"
         timeout_shot.parent.mkdir(parents=True, exist_ok=True)
         page.screenshot(path=str(timeout_shot), full_page=True)
