@@ -7,12 +7,13 @@ from datetime import datetime
 import json
 import sys
 import asyncio
+import re
+import time
 
 if sys.platform.startswith("win"):
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
 from playwright.sync_api import sync_playwright
-from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 from src.eam_automation.actions.library import ACTION_REGISTRY
 from src.eam_automation.storage.yaml_store import load_dataset, load_test_case
@@ -25,9 +26,9 @@ def _log(result: dict, message: str) -> None:
 
 
 def wait_for_eam_ready(page, *, root: Path, timeout_ms: int = 60000) -> None:
-    """Wait until FACETS EAM dashboard header is fully visible."""
-    header1 = page.get_by_text("TriZetto Elements")
-    header2 = page.get_by_text("Enrollment Administration Manager")
+    """Wait until FACETS EAM dashboard header texts are visible in page or same iframe."""
+    header1_pattern = re.compile(r"TriZetto\s*Elements", re.IGNORECASE)
+    header2_pattern = re.compile(r"Enrollment\s*Administration\s*Manager", re.IGNORECASE)
 
     try:
         current_url = page.url
@@ -39,57 +40,66 @@ def wait_for_eam_ready(page, *, root: Path, timeout_ms: int = 60000) -> None:
     except Exception:
         current_title = "<unavailable>"
 
-    try:
-        header1_count = header1.count()
-    except Exception:
-        header1_count = -1
-
-    try:
-        header2_count = header2.count()
-    except Exception:
-        header2_count = -1
-
     print(
         "EAM readiness diagnostics (before wait): "
-        f"url={current_url}, title={current_title!r}, "
-        f"trizetto_count={header1_count}, eam_header_count={header2_count}"
+        f"url={current_url}, title={current_title!r}"
     )
 
+    deadline = time.monotonic() + (timeout_ms / 1000)
+    last_diag: tuple[str, int, int, bool, bool] = ("main", -1, -1, False, False)
+
+    while time.monotonic() < deadline:
+        contexts = [("main", page)] + [
+            (f"frame:{idx}:{frame.url}", frame) for idx, frame in enumerate(page.frames)
+        ]
+
+        for ctx_name, ctx in contexts:
+            try:
+                header1 = ctx.get_by_text(header1_pattern)
+                header2 = ctx.get_by_text(header2_pattern)
+
+                count1 = header1.count()
+                count2 = header2.count()
+                vis1 = header1.first.is_visible() if count1 > 0 else False
+                vis2 = header2.first.is_visible() if count2 > 0 else False
+
+                last_diag = (ctx_name, count1, count2, vis1, vis2)
+
+                if vis1 and vis2:
+                    print(
+                        "EAM readiness diagnostics (success): "
+                        f"context={ctx_name}, trizetto_count={count1}, "
+                        f"eam_header_count={count2}"
+                    )
+                    return
+            except Exception:
+                continue
+
+        time.sleep(0.25)
+
     try:
-        header1.wait_for(state="visible", timeout=timeout_ms)
-        header2.wait_for(state="visible", timeout=timeout_ms)
-    except PlaywrightTimeoutError as exc:
-        try:
-            fail_url = page.url
-        except Exception:
-            fail_url = "<unavailable>"
+        fail_url = page.url
+    except Exception:
+        fail_url = "<unavailable>"
 
-        try:
-            fail_title = page.title()
-        except Exception:
-            fail_title = "<unavailable>"
+    try:
+        fail_title = page.title()
+    except Exception:
+        fail_title = "<unavailable>"
 
-        try:
-            fail_header1_count = header1.count()
-        except Exception:
-            fail_header1_count = -1
+    ctx_name, count1, count2, vis1, vis2 = last_diag
+    print(
+        "EAM readiness diagnostics (timeout): "
+        f"url={fail_url}, title={fail_title!r}, context={ctx_name}, "
+        f"trizetto_count={count1}, eam_header_count={count2}, "
+        f"trizetto_visible={vis1}, eam_header_visible={vis2}"
+    )
 
-        try:
-            fail_header2_count = header2.count()
-        except Exception:
-            fail_header2_count = -1
-
-        print(
-            "EAM readiness diagnostics (timeout): "
-            f"url={fail_url}, title={fail_title!r}, "
-            f"trizetto_count={fail_header1_count}, eam_header_count={fail_header2_count}"
-        )
-
-        timeout_shot = root / "tmp" / "eam_ready_timeout.png"
-        timeout_shot.parent.mkdir(parents=True, exist_ok=True)
-        page.screenshot(path=str(timeout_shot), full_page=True)
-        print("EAM dashboard did not appear within 60 seconds")
-        raise TimeoutError("EAM dashboard not detected within 60 seconds") from exc
+    timeout_shot = root / "tmp" / "eam_ready_timeout.png"
+    timeout_shot.parent.mkdir(parents=True, exist_ok=True)
+    page.screenshot(path=str(timeout_shot), full_page=True)
+    print("EAM dashboard did not appear within 60 seconds")
+    raise TimeoutError("EAM dashboard not detected within 60 seconds")
 
 
 def execute_steps_in_order(
